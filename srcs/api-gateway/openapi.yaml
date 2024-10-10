@@ -1,0 +1,59 @@
+openapi: 3.0.0
+info:
+  title: API Gateway
+  description: API Gateway pour la facturation et la gestion d'inventaire.
+  version: 1.0.0
+servers:
+  - url: http://localhost:4000
+tags:
+  - name: Billing
+    description: Endpoint pour la gestion de la facturation
+  - name: Inventory
+    description: Endpoint pour la gestion de l'inventaire
+paths:
+  /:
+    get:
+      summary: Accueil de l'API Gateway
+      responses:
+        '200':
+          description: Bienvenue dans l'application gateway
+  /api/inventory:
+    get:
+      summary: Proxy vers l'API d'inventaire
+      tags:
+        - Inventory
+      responses:
+        '200':
+          description: Détails de l'inventaire récupérés
+        '500':
+          description: Erreur de connexion à l'API d'inventaire
+  /api/billing:
+    post:
+      summary: Envoyer une commande pour traitement
+      tags:
+        - Billing
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                user_id:
+                  type: integer
+                  description: L'identifiant de l'utilisateur
+                order_id:
+                  type: integer
+                  description: L'identifiant de la commande
+                number_of_items:
+                  type: integer
+                  description: Nombre d'articles dans la commande
+                total_amount:
+                  type: number
+                  format: float
+                  description: Montant total de la commande
+      responses:
+        '200':
+          description: Commande envoyée pour traitement
+        '500':
+          description: Erreur lors de la connexion à RabbitMQ

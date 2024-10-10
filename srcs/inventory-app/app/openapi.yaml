@@ -1,0 +1,142 @@
+openapi: 3.0.0
+info:
+  title: Inventory API
+  version: 1.0.0
+  description: API pour gérer l'inventaire des films
+
+servers:
+  - url: http://localhost:8080
+
+paths:
+  /api/movies:
+    get:
+      summary: Récupérer tous les films
+      tags:
+        - Movies
+      responses:
+        '200':
+          description: Une liste de films
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: integer
+                    title:
+                      type: string
+                    director:
+                      type: string
+                    year:
+                      type: integer
+    post:
+      summary: Ajouter un nouveau film
+      tags:
+        - Movies
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                genre:
+                  type: string
+                year:
+                  type: integer
+      responses:
+        '201':
+          description: Film ajouté avec succès
+        '400':
+          description: Entrée invalide
+    delete:
+      summary: Supprimer tous les films
+      tags:
+        - Movies
+      responses:
+        '204':
+          description: Tous les films supprimés avec succès
+
+  /api/movies/{id}:
+    get:
+      summary: Récupérer un film par ID
+      tags:
+        - Movies
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: L'ID du film à récupérer
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Un film unique
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                  title:
+                    type: string
+                  director:
+                    type: string
+                  year:
+                    type: integer
+        '404':
+          description: Film non trouvé
+
+    put:
+      summary: Mettre à jour un film par ID
+      tags:
+        - Movies
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: L'ID du film à mettre à jour
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                director:
+                  type: string
+                year:
+                  type: integer
+      responses:
+        '200':
+          description: Film mis à jour avec succès
+        '400':
+          description: Entrée invalide
+        '404':
+          description: Film non trouvé
+
+    delete:
+      summary: Supprimer un film par ID
+      tags:
+        - Movies
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: L'ID du film à supprimer
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Film supprimé avec succès
+        '404':
+          description: Film non trouvé
