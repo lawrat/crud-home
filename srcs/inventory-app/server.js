@@ -29,7 +29,7 @@ swaggerSetup(app);
 console.log('DB_HOST:', process.env.DB_HOST);
 console.log('DB_USER:', process.env.DB_USER);
 console.log('DB_PASS:', process.env.DB_PASS);
-console.log('DB_NAME:', process.env.DB_NAME);
+console.log('INVENTORY_DB_NAME:', process.env.INVENTORY_DB_NAME);
 
 // Démarrage du serveur et synchronisation avec la base de données
 app.listen(PORT, async () => {

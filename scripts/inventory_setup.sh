@@ -1,48 +1,51 @@
 #!/bin/bash
 
+# Arrêter le script en cas d'erreur
+set -e
+
 # Mise à jour des packages
 echo "Mise à jour des packages..."
 sudo apt-get update
 
-# Installer Node.js et npm
-echo "Installation de Node.js et npm..."
-curl -sL https://deb.nodesource.com/setup_14.x | sudo -E bash -
-sudo apt-get install -y nodejs
-
-# Installer PM2
-echo "Installation de PM2..."
-sudo npm install -g pm2
-
-# Créer le dossier pour l'application Inventory si nécessaire
-echo "Création du dossier pour l'application Inventory..."
-if [ ! -d "/home/vagrant/inventory-app" ]; then
-    mkdir /home/vagrant/inventory-app
-    echo "Dossier /home/vagrant/inventory-app créé."
+# Vérifier si Node.js est déjà installé
+if ! command -v node > /dev/null 2>&1; then
+    echo "Installation de Node.js et npm..."
+    curl -sL https://deb.nodesource.com/setup_14.x | sudo -E bash -
+    sudo apt-get install -y nodejs
 else
-    echo "Le dossier /home/vagrant/inventory-app existe déjà."
+    echo "Node.js est déjà installé."
 fi
 
-# Copier le code de l'API Inventory
-echo "Copie du code de l'API Inventory..."
-if [ -d "./srcs/inventory-app" ]; then
-    cp -r ./srcs/inventory-app/* /home/vagrant/inventory-app
+# Vérifier si PM2 est déjà installé
+if ! command -v pm2 > /dev/null 2>&1; then
+    echo "Installation de PM2..."
+    sudo npm install -g pm2
 else
-    echo "Erreur : Le répertoire ./srcs/inventory-app n'existe pas."
+    echo "PM2 est déjà installé."
+fi
+
+# Chemin du dossier de l'application d'inventaire
+APP_DIR="/home/vagrant/inventory-app"
+
+# Vérifier si le dossier inventory-app existe
+if [ ! -d "$APP_DIR" ]; then
+    echo "Erreur : Le dossier $APP_DIR n'existe pas. Assurez-vous qu'il est synchronisé correctement."
     exit 1
 fi
 
-# Installer les dépendances de l'API Inventory
-echo "Installation des dépendances de l'API Inventory..."
-cd /home/vagrant/inventory-app || { echo "Erreur : Impossible de changer de répertoire vers /home/vagrant/inventory-app"; exit 1; }
-npm install
+# Installation des dépendances de l'application
+echo "Installation des dépendances de l'application d'inventaire..."
+cd "$APP_DIR" || { echo "Erreur : Impossible de changer de répertoire vers $APP_DIR"; exit 1; }
+npm install || { echo "Erreur : L'installation des dépendances a échoué."; exit 1; }
 
 # Démarrer l'application avec PM2
 echo "Démarrage de l'application avec PM2..."
 if [ -f "server.js" ]; then
-    pm2 start server.js --name "inventory-app"
+    pm2 start server.js --name inventory-app || { echo "Erreur : Échec du démarrage de l'application."; exit 1; }
 else
-    echo "Erreur : Le fichier server.js n'existe pas dans /home/vagrant/inventory-app."
+    echo "Erreur : Le fichier server.js n'existe pas dans $APP_DIR."
     exit 1
 fi
 
-echo "Provisionnement terminé."
+pm2 save
+echo "Provisionnement de l'application d'inventaire terminé avec succès."

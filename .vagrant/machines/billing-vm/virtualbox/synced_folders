@@ -1,0 +1,1 @@
+{"virtualbox":{"/home/vagrant/billing-app":{"guestpath":"/home/vagrant/billing-app","hostpath":"/home/digifemmes-22lab064/Desktop/crud-home/srcs/billing-app","disabled":false,"__vagrantfile":true},"/vagrant":{"guestpath":"/vagrant","hostpath":"/home/digifemmes-22lab064/Desktop/crud-home","disabled":false,"__vagrantfile":true}}}
