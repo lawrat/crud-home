@@ -46,6 +46,6 @@ else
     echo "Erreur : Le fichier server.js n'existe pas dans $APP_DIR."
     exit 1
 fi
-
+pm2 startup
 pm2 save
 echo "Provisionnement de l'application d'inventaire terminé avec succès."
