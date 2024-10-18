@@ -1,71 +1,132 @@
-// Endpoint pour la facturation
-/**
- * @swagger
- * /api/billing:
- *   post:
- *     summary: Create a billing request
- *     tags: [Billing]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               customerId:
- *                 type: string
- *                 description: ID of the customer making the billing request
- *               amount:
- *                 type: number
- *                 description: Amount to be billed
- *               items:
- *                 type: array
- *                 items:
- *                   type: object
- *                   properties:
- *                     itemId:
- *                       type: string
- *                       description: ID of the item being billed
- *                     quantity:
- *                       type: integer
- *                       description: Quantity of the item
- *     responses:
- *       200:
- *         description: Command sent for processing successfully
- *       500:
- *         description: Error occurred while sending the message to the queue
- */
-app.post('/api/billing', (req, res) => {
-  console.log('Requête de facturation reçue:', req.body); // Log de la requête reçue
-  amqp.connect(RABBITMQ_URL, (error0, connection) => {
-    if (error0) {
-      console.error('Erreur de connexion à RabbitMQ:', error0);
-      return res.status(500).send('Erreur lors de la connexion à RabbitMQ');
+const express = require("express");
+const amqp = require("amqplib/callback_api");
+
+const router = express.Router();
+let isBillingProcessing = false;
+
+module.exports = (app) => {
+  // Swagger documentation for Billing API
+  /**
+   * @swagger
+   * /api/billing:
+   *   post:
+   *     summary: Create a billing request
+   *     tags: [Billing]
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             properties:
+   *               customerId:
+   *                 type: string
+   *                 description: ID of the customer making the billing request
+   *               amount:
+   *                 type: number
+   *                 description: Amount to be billed
+   *               items:
+   *                 type: array
+   *                 items:
+   *                   type: object
+   *                   properties:
+   *                     itemId:
+   *                       type: string
+   *                       description: ID of the item being billed
+   *                     quantity:
+   *                       type: integer
+   *                       description: Quantity of the item
+   */
+
+  // Endpoint for billing
+  router.post("/billing", (req, res) => {
+    console.log("Billing request received:", req.body);
+
+    if (isBillingProcessing) {
+      console.log("Billing already in process. Processing order directly.");
+      return res.status(200).send("Order processed without billing.");
     }
 
-    connection.createChannel((error1, channel) => {
-      if (error1) {
-        console.error('Erreur lors de la création du canal:', error1);
-        return res.status(500).send('Erreur lors de la création du canal');
+    isBillingProcessing = true;
+    console.log("Starting billing process...");
+
+    amqp.connect(process.env.RABBITMQ_URL, (error0, connection) => {
+      if (error0) {
+        console.error("RabbitMQ connection error:", error0);
+        isBillingProcessing = false;
+        return res
+          .status(500)
+          .send("Order processed directly, billing skipped.");
       }
 
-      const queue = 'billing_queue'; // Assurez-vous que cela correspond à ce que votre serveur de facturation écoute
-      const msg = JSON.stringify(req.body);
-
-      channel.assertQueue(queue, { durable: true });
-
-      channel.sendToQueue(queue, Buffer.from(msg), {}, (error) => {
-        if (error) {
-          console.error('Erreur lors de l\'envoi du message:', error);
-          return res.status(500).send('Erreur lors de l\'envoi du message à la file d\'attente');
+      connection.createChannel((error1, channel) => {
+        if (error1) {
+          console.error("Channel creation error:", error1);
+          isBillingProcessing = false;
+          return res.status(500).send("Channel creation error");
         }
-        console.log(`Message envoyé à la file d'attente ${queue}:`, msg);
-        res.status(200).send('Commande envoyée pour traitement');
+
+        const queue = "billing_queue";
+        const msg = JSON.stringify(req.body);
+
+        channel.assertQueue(queue, { durable: true });
+        channel.sendToQueue(queue, Buffer.from(msg));
+        console.log(`Message sent to queue ${queue}:`, msg);
+        res.status(200).send("Order sent for processing");
+
+        setTimeout(() => {
+          connection.close();
+          console.log("RabbitMQ connection closed.");
+          isBillingProcessing = false;
+        }, 500);
       });
     });
-
-    setTimeout(() => {
-      connection.close();
-    }, 500);
   });
-});
+
+  // Swagger documentation for Inventory API
+  /**
+   * @swagger
+   * /api/inventory:
+   *   post:
+   *     summary: Add an item to inventory
+   *     tags: [Inventory]
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             properties:
+   *               itemName:
+   *                 type: string
+   *                 description: Name of the item
+   *               quantity:
+   *                 type: integer
+   *                 description: Quantity to be added
+   *   get:
+   *     summary: Get inventory items
+   *     tags: [Inventory]
+   *     responses:
+   *       200:
+   *         description: List of inventory items
+   *       500:
+   *         description: Error fetching inventory data
+   */
+
+  // Endpoint for adding inventory item
+  router.post("/inventory", async (req, res) => {
+    try {
+      console.log("Inventory add request received:", req.body);
+      // Simulate inventory addition, replace with real logic
+      res
+        .status(201)
+        .json({ message: "Item added to inventory", data: req.body });
+    } catch (error) {
+      console.error("Error adding inventory:", error);
+      res.status(500).json({ message: "Error adding to inventory" });
+    }
+  });
+
+  // Use the router in the app
+  app.use("/api", router);
+};

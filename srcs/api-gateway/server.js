@@ -1,77 +1,55 @@
-require('dotenv').config(); // Charger les variables d'environnement
-const express = require('express');
-const { createProxyMiddleware } = require('http-proxy-middleware'); // Utiliser createProxyMiddleware
-const amqp = require('amqplib/callback_api');
+// server.js
 
-const swaggerUi = require('swagger-ui-express'); // Importez les routes pour les films
-const swaggerSetup = require('./swagger');
-const YAML = require('yamljs');
-const swaggerDocument = YAML.load('./openapi.yaml'); // Chemin vers votre fichier OpenAPI YAML
+// Importez les modules nécessaires
+require("dotenv").config(); // Charger les variables d'environnement
+const express = require("express");
+const swaggerUi = require("swagger-ui-express");
+const YAML = require("yamljs");
+const swaggerDocument = YAML.load("./openapi.yaml"); // Chemin vers votre fichier OpenAPI YAML
+const cors = require("cors");
+
+// Vérifiez que toutes les variables d'environnement nécessaires sont définies
+const requiredEnvVars = [
+  "PORT",
+  "INVENTORY_API_URL",
+  "BILLING_API_URL",
+  "RABBITMQ_URL",
+];
+requiredEnvVars.forEach((varName) => {
+  if (!process.env[varName]) {
+    console.error(
+      `Erreur : La variable d'environnement ${varName} est manquante.`
+    );
+    process.exit(1);
+  }
+});
 
 const app = express();
 app.use(express.json());
+app.use(cors()); // Assurez-vous que CORS est appliqué avant vos routes
 
-swaggerSetup(app);
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
+// Configurez Swagger pour la documentation
+app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
-// Charger les variables d'environnement depuis le fichier .env
-const RABBITMQ_URL = process.env.RABBITMQ_URL;
-const BILLING_API_URL = process.env.BILLING_API_URL;
-const INVENTORY_API_URL = process.env.INVENTORY_API_URL;
+// Importez le proxy pour gérer les requêtes vers les API externes
+require("./proxy")(app); // Utilise le proxy défini dans proxy.js
+
+// Importez les routes locales
+require("./routes")(app); // Passer une fonction pour accéder à l'état
 
 // Route d'accueil
-app.get('/', (req, res) => {
-    res.send('Bienvenue dans l\'application gateway!');
-  });
-
-// Proxy vers l'API Inventory
-app.use('/api/inventory', createProxyMiddleware({
-  target: INVENTORY_API_URL,
-  changeOrigin: true,
-  pathRewrite: {
-    '^/api/inventory': '' // Réécriture de l'URL si nécessaire
-  },
-  onError: (err, req, res) => {
-    console.error('Erreur de proxy:', err);
-    res.status(500).send('Erreur de connexion à l\'API d\'inventaire');
-  }
-}));
-
-// Endpoint pour la facturation
-app.post('/api/billing', (req, res) => {
-  amqp.connect(RABBITMQ_URL, (error0, connection) => {
-    if (error0) {
-      console.error('Erreur de connexion à RabbitMQ:', error0);
-      return res.status(500).send('Erreur lors de la connexion à RabbitMQ');
-    }
-
-    connection.createChannel((error1, channel) => {
-      if (error1) {
-        console.error('Erreur lors de la création du canal:', error1);
-        return res.status(500).send('Erreur lors de la création du canal');
-      }
-
-      const queue = 'billing_queue';
-      const msg = JSON.stringify(req.body);
-
-      channel.assertQueue(queue, {
-        durable: true // Assurer que la file d'attente est durable
-      });
-
-      channel.sendToQueue(queue, Buffer.from(msg));
-      console.log(`Message envoyé à la file d'attente ${queue}:`, msg);
-      res.status(200).send('Commande envoyée pour traitement');
-    });
-
-    // Fermer la connexion après un délai pour permettre l'envoi du message
-    setTimeout(() => {
-      connection.close();
-    }, 500);
-  });
+app.get("/", (req, res) => {
+  res.send("Bienvenue dans l'application Gateway !");
 });
 
-// Lancer l'API Gateway sur le port 4000
-const PORT = 4000;
+// Middleware de gestion des erreurs
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).send("Quelque chose s'est mal passé !");
+});
+
+// Lancer l'API Gateway sur le port défini
+const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => {
-  console.log(`API Gateway running on port ${PORT}`);
+  console.log(`API Gateway en cours d'exécution sur le port ${PORT}`);
 });

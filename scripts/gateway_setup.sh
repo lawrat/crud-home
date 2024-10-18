@@ -27,26 +27,23 @@ fi
 # Chemin du dossier de l'application de passerelle
 APP_DIR="/home/vagrant/api-gateway"
 
-# Vérifier si le dossier api-gateway existe
+# Vérifier si le dossier de l'application existe
 if [ ! -d "$APP_DIR" ]; then
-    echo "Erreur : Le dossier $APP_DIR n'existe pas. Assurez-vous qu'il est synchronisé correctement."
+    echo "Erreur : Le dossier $APP_DIR n'existe pas. Veuillez vérifier le chemin."
     exit 1
 fi
 
 # Installation des dépendances de l'application
-echo "Installation des dépendances de l'application de passerelle..."
-cd "$APP_DIR" || { echo "Erreur : Impossible de changer de répertoire vers $APP_DIR"; exit 1; }
-npm install || { echo "Erreur : L'installation des dépendances a échoué."; exit 1; }
+cd "$APP_DIR"
+echo "Installation des dépendances de l'application..."
+npm install express http-proxy-middleware dotenv amqplib node-fetch cors body-parser || { echo "Erreur : L'installation des dépendances a échoué."; exit 1; }
 
 # Démarrer l'application avec PM2
 echo "Démarrage de l'application avec PM2..."
-if [ -f "server.js" ]; then
-    pm2 start server.js --name api-gateway || { echo "Erreur : Échec du démarrage de l'application."; exit 1; }
-else
-    echo "Erreur : Le fichier server.js n'existe pas dans $APP_DIR."
-    exit 1
-fi
+pm2 start server.js --name api-gateway || { echo "Erreur : Échec du démarrage de l'application."; exit 1; }
 
+# Configurer PM2 pour démarrer au reboot
 pm2 startup
 pm2 save
-echo "Provisionnement de l'application de passerelle terminé avec succès."
+
+echo "L'application de passerelle API a été démarrée avec succès."
