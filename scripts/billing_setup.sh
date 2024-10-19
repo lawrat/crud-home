@@ -113,7 +113,4 @@ else
     exit 1
 fi
 
-pm2 startup
-pm2 save
-
 echo "Provisionnement de l'application de facturation terminé."

@@ -36,14 +36,10 @@ fi
 # Installation des dépendances de l'application
 cd "$APP_DIR"
 echo "Installation des dépendances de l'application..."
-npm install express http-proxy-middleware dotenv amqplib node-fetch cors body-parser || { echo "Erreur : L'installation des dépendances a échoué."; exit 1; }
+npm install express http-proxy-middleware dotenv amqplib node-fetch@2 cors body-parser || { echo "Erreur : L'installation des dépendances a échoué."; exit 1; }
 
 # Démarrer l'application avec PM2
 echo "Démarrage de l'application avec PM2..."
 pm2 start server.js --name api-gateway || { echo "Erreur : Échec du démarrage de l'application."; exit 1; }
-
-# Configurer PM2 pour démarrer au reboot
-pm2 startup
-pm2 save
 
 echo "L'application de passerelle API a été démarrée avec succès."

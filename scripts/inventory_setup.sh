@@ -119,7 +119,4 @@ else
     exit 1
 fi
 
-sudo env PATH=$PATH:/usr/bin /usr/lib/node_modules/pm2/bin/pm2 startup systemd -u vagrant --hp /home/vagrant
-pm2 startup
-pm2 save
 echo "Provisionnement de l'application d'inventaire terminé avec succès."
