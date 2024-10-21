@@ -79,6 +79,20 @@ fi
 echo "Démarrage du service RabbitMQ..."
 sudo service rabbitmq-server start
 
+# Création de l'utilisateur lsall dans RabbitMQ
+echo "Création de l'utilisateur 'lsall' dans RabbitMQ..."
+if sudo rabbitmqctl list_users | grep -q "lsall"; then
+    echo "L'utilisateur 'lsall' existe déjà dans RabbitMQ."
+else
+    sudo rabbitmqctl add_user lsall lsall2024
+    echo "Utilisateur 'lsall' créé avec succès dans RabbitMQ."
+fi
+
+# Octroi des permissions à l'utilisateur lsall sur le vhost par défaut (/)
+echo "Octroi des permissions à l'utilisateur 'lsall' sur le vhost par défaut dans RabbitMQ..."
+sudo rabbitmqctl set_user_tags lsall administrator
+sudo rabbitmqctl set_permissions -p / lsall ".*" ".*" ".*"
+
 # Installation de Node.js et PM2
 if ! command -v node > /dev/null 2>&1; then
     echo "Installation de Node.js..."
@@ -91,26 +105,41 @@ if ! command -v pm2 > /dev/null 2>&1; then
     sudo npm install -g pm2
 fi
 
-# Chemin de l'application de facturation
+# Chemin du dossier de l'application d'inventaire
 APP_DIR="/home/vagrant/billing-app"
 
-# Installation des dépendances
+# Vérifier si le dossier billing-app existe
+if [ ! -d "$APP_DIR" ]; then
+    echo "Erreur : Le dossier $APP_DIR n'existe pas. Assurez-vous qu'il est synchronisé correctement."
+    exit 1
+fi
+
+# Changer la propriété des fichiers pour l'utilisateur vagrant
+echo "Changement de propriété des fichiers pour l'utilisateur vagrant..."
+sudo chown -R vagrant:vagrant "$APP_DIR"
+
+# Exécution des commandes en tant qu'utilisateur vagrant
+sudo -u vagrant -H bash << EOF
+
+# Installation des dépendances de l'application
 echo "Installation des dépendances de l'application de facturation..."
 cd "$APP_DIR" || { echo "Erreur : Impossible de changer de répertoire vers $APP_DIR"; exit 1; }
-if npm install; then
-    echo "Dépendances installées avec succès."
-else
-    echo "Erreur : L'installation des dépendances a échoué."
-    exit 1
-fi
+npm install || { echo "Erreur : L'installation des dépendances a échoué."; exit 1; }
 
-# Démarrage de l'application
+# Démarrer l'application avec PM2 sous l'utilisateur vagrant
 echo "Démarrage de l'application avec PM2..."
-if pm2 start server.js --name billing-app; then
-    echo "Application démarrée avec succès."
+if [ -f "server.js" ]; then
+    pm2 start server.js --name billing-app || { echo "Erreur : Échec du démarrage de l'application."; exit 1; }
 else
-    echo "Erreur : Échec du démarrage de l'application."
+    echo "Erreur : Le fichier server.js n'existe pas dans $APP_DIR."
     exit 1
 fi
 
-echo "Provisionnement de l'application de facturation terminé."
+# Enregistrer PM2 pour redémarrer automatiquement au reboot
+pm2 save
+pm2 startup | sudo tee /dev/null > /dev/null
+sudo env PATH=\$PATH:/usr/bin pm2 startup systemd -u vagrant --hp /home/vagrant || { echo "Erreur : PM2 n'a pas pu être configuré pour redémarrer automatiquement."; exit 1; }
+
+EOF
+
+echo "Provisionnement de l'application d'inventaire terminé avec succès."

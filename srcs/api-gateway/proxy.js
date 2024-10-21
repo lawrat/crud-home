@@ -6,10 +6,6 @@ module.exports = (app) => {
   const INVENTORY_API_URL = process.env.INVENTORY_API_URL;
   const BILLING_API_URL = process.env.BILLING_API_URL;
   const RABBITMQ_URL = process.env.RABBITMQ_URL;
-  console.log("URL de l'API Inventory:", INVENTORY_API_URL);
-  console.log("URL de l'API Billing:", BILLING_API_URL);
-  console.log("URL de RabbitMQ:", RABBITMQ_URL);
-  
 
   // Proxy pour Inventory API
   app.use("/api/inventory", (req, res) => {

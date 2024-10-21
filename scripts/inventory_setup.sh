@@ -95,28 +95,32 @@ if [ ! -d "$APP_DIR" ]; then
     exit 1
 fi
 
+# Changer la propriété des fichiers pour l'utilisateur vagrant
+echo "Changement de propriété des fichiers pour l'utilisateur vagrant..."
+sudo chown -R vagrant:vagrant "$APP_DIR"
+
+# Exécution des commandes en tant qu'utilisateur vagrant
+sudo -u vagrant -H bash << EOF
+
 # Installation des dépendances de l'application
 echo "Installation des dépendances de l'application d'inventaire..."
 cd "$APP_DIR" || { echo "Erreur : Impossible de changer de répertoire vers $APP_DIR"; exit 1; }
-if npm install; then
-    echo "Dépendances installées avec succès."
-else
-    echo "Erreur : L'installation des dépendances a échoué."
-    exit 1
-fi
+npm install || { echo "Erreur : L'installation des dépendances a échoué."; exit 1; }
 
-# Démarrer l'application avec PM2
+# Démarrer l'application avec PM2 sous l'utilisateur vagrant
 echo "Démarrage de l'application avec PM2..."
 if [ -f "server.js" ]; then
-    if pm2 start server.js --name inventory-app; then
-        echo "Application démarrée avec succès."
-    else
-        echo "Erreur : Échec du démarrage de l'application."
-        exit 1
-    fi
+    pm2 start server.js --name inventory-app || { echo "Erreur : Échec du démarrage de l'application."; exit 1; }
 else
     echo "Erreur : Le fichier server.js n'existe pas dans $APP_DIR."
     exit 1
 fi
+
+# Enregistrer PM2 pour redémarrer automatiquement au reboot
+pm2 save
+pm2 startup | sudo tee /dev/null > /dev/null
+sudo env PATH=\$PATH:/usr/bin pm2 startup systemd -u vagrant --hp /home/vagrant || { echo "Erreur : PM2 n'a pas pu être configuré pour redémarrer automatiquement."; exit 1; }
+
+EOF
 
 echo "Provisionnement de l'application d'inventaire terminé avec succès."
